@@ -82,7 +82,8 @@ router.put('/:id', (req, res, next) => {
   Note
     .findOneAndUpdate(
       {_id: req.params.id},
-      {$set: toUpdate}
+      {$set: toUpdate},
+      {new: true}
     )
     .then(result => res.sendStatus(204))
     .catch(err => next(err));
