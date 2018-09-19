@@ -13,7 +13,7 @@ chai.use(chaiHttp);
 
 describe('Noteful API resource', function(){
   before(function () {
-    return mongoose.connect(TEST_MONGODB_URI)
+    return mongoose.connect(TEST_MONGODB_URI, { useNewUrlParser:true })
       .then(() => mongoose.connection.db.dropDatabase());
   });
 
