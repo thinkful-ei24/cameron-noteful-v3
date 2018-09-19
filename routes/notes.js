@@ -27,6 +27,11 @@ router.get('/', (req, res, next) => {
 /* ========== GET/READ A SINGLE ITEM ========== */
 router.get('/:id', (req, res, next) => {
   const {id} = req.params;
+  if (id.length !== 24){
+    const message = 'Invalid ID';
+    console.error(message);
+    return res.status(400).send(message);
+  } 
   Note
     .findById(id)
     .then(result => {
@@ -71,6 +76,15 @@ router.put('/:id', (req, res, next) => {
     console.error(message);
     return res.status(400).json({message});
   }
+  const requiredFields = ['title'];
+  for (let i=0; i<requiredFields.length; i++){
+    const field = requiredFields[i];
+    if (!(field in req.body)) {
+      const message = `Missing \`${field}\` in request body`;
+      console.error(message);
+      return res.status(400).send(message);
+    }
+  }
   const toUpdate = {};
   const updateableFields = ['title', 'content'];
 
@@ -93,12 +107,18 @@ router.put('/:id', (req, res, next) => {
 /* ========== DELETE/REMOVE A SINGLE ITEM ========== */
 router.delete('/:id', (req, res, next) => {
   const {id} = req.params;
-
-  Note
-    .findOneAndRemove({_id: id})
-    .then(() => res.sendStatus(204))
-    .catch(err => next(err));
-
+  return Note.findById(id)
+    .then(function(response){
+      if(response){
+        Note
+          .findOneAndRemove({_id: id})
+          .then(() => res.sendStatus(204))
+          .catch(err => next(err));
+      } else {
+        next();
+      }
+    });
 });
+
 
 module.exports = router;
