@@ -87,22 +87,6 @@ describe('Noteful API resource', function(){
         });  
     });
 
-    it('should return an empty array for an incorrect query', function () {
-      const searchTerm = 'NotValid';
-      // const re = new RegExp(searchTerm, 'i');
-      const dbPromise = Note.find({
-        title: { $regex: searchTerm, $options: 'i' }
-        // $or: [{ 'title': re }, { 'content': re }]
-      });
-      const apiPromise = chai.request(app).get(`/api/notes?searchTerm=${searchTerm}`);
-      return Promise.all([dbPromise, apiPromise])
-        .then(([data, res]) => {
-          expect(res).to.have.status(200);
-          expect(res).to.be.json;
-          expect(res.body).to.be.a('array');
-          expect(res.body).to.have.length(data.length);
-        });
-    });
 
     it('should return an empty array for an incorrect query', function () {
       const searchTerm = 'NotValid';

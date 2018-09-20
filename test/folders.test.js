@@ -1,0 +1,217 @@
+const chai = require('chai');
+const chaiHttp = require('chai-http');
+const mongoose = require('mongoose');
+
+const app = require('../server');
+const {TEST_MONGODB_URI} = require('../config');
+
+const Folder = require('../models/folder');
+const {folders} = require('../db/seed/data');
+
+const expect = chai.expect;
+chai.use(chaiHttp);
+
+describe('Noteful API resource', function(){
+  before(function () {
+    return mongoose.connect(TEST_MONGODB_URI, { useNewUrlParser:true })
+      .then(() => mongoose.connection.db.dropDatabase());
+  });
+
+  beforeEach(function () {
+    return Folder.insertMany(folders);
+  });
+
+  afterEach(function () {
+    return mongoose.connection.db.dropDatabase();
+  });
+
+  after(function () {
+    return mongoose.disconnect();
+  });
+
+  describe('GET api/folders', function(){
+
+    it('should return all existing notes', function(){
+      let res;
+      let resFolder;
+      return chai.request(app)
+        .get('/api/folders')
+        .then(function(results){
+          res = results;
+          expect(res).to.have.status(200);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('array');
+          expect(res.body).to.have.lengthOf.at.least(1);
+
+          res.body.forEach(function(folder){
+            expect(folder).to.be.a('object');
+            expect(folder).to.include.keys(
+              'id', 'name');
+          });
+          resFolder = res.body[0];
+          return Folder.findById(resFolder.id); 
+        })
+        .then(function(folder){
+          expect(resFolder.id).to.equal(folder.id);
+          expect(resFolder.name).to.equal(folder.name);
+        });
+    });
+  });  
+
+  describe('GET api/folders/:id', function(){
+    it('should return correct data when getting by id', function(){
+      let testFolder;
+      let id;
+      return Folder
+        .findOne()
+        .then(function(folder){
+          testFolder = folder;
+          id = testFolder.id;
+          return chai.request(app)
+            .get(`/api/folders/${id}`);
+        })
+        .then(function(res){
+          expect(res).to.have.status(200);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('object');
+          expect(res.body).to.include.keys(
+            'id', 'name'
+          );
+          expect(res.body.id).to.equal(testFolder.id);
+          expect(res.body.name).to.equal(testFolder.name);
+        });
+    });
+
+    it('should return 400 if id is not valid', function(){
+      return chai.request(app)
+        .get('/api/folders/NOT-A-VALID-ID')
+        .then(function(res){
+          expect(res).to.have.status(400);
+        });
+    });
+
+    it('should return 404 if id is not found', function(){
+      return chai.request(app)
+        .get('/api/folders/100000000000000000000003')
+        .then(function(res){
+          expect(res).to.have.status(404);
+        });
+    });
+  });
+
+  describe('POST api/folders', function(){
+
+    it('should add a new folders', function(){
+      const newFolder = {
+        name: 'New Folder',
+      };
+      let res;
+      return chai.request(app)
+        .post('/api/folders')
+        .send(newFolder)
+        .then(function(_res) {
+          res = _res;
+          expect(res).to.have.status(201);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('object');
+          expect(res.body).to.include.keys(
+            'id', 'name');
+          expect(res.body.name).to.equal(newFolder.name);
+          // cause Mongo should have created id on insertion
+          expect(res.body.id).to.not.be.null;
+
+          return Folder.findById(res.body.id);
+        })
+        .then(function(folder){
+          expect(folder.id).to.equal(res.body.id);
+          expect(folder.name).to.equal(newFolder.name);
+          expect(new Date(res.body.createdAt)).to.eql(folder.createdAt);
+          expect(new Date(res.body.updatedAt)).to.eql(folder.updatedAt);
+        });
+    });
+
+    it('should send 400 error if name is missing', function(){
+      const badFolder = {};
+
+      return chai.request(app)
+        .post('/api/folders')
+        .send(badFolder)
+        .then(function(res){
+          expect(res).to.have.status(400);
+        });
+    });
+  });
+
+  describe('PUT api/folders', function(){
+
+    it('should update folder in database', function(){
+      const updatedFolder = {
+        name: 'Updated Folder'
+      };
+
+      return Folder
+        .findOne()
+        .then(function(folder){
+          updatedFolder.id = folder.id;
+
+          return chai.request(app)
+            .put(`/api/folders/${folder.id}`)
+            .send(updatedFolder);
+        })
+        .then(function(res){
+          expect(res).to.have.status(204);
+
+          return Folder.findById(updatedFolder.id);
+        })
+        .then(function(res){
+          expect(res.name).to.equal(updatedFolder.name);
+        });
+    });
+
+    it('should send 400 error if name is missing', function(){
+      const badFolder = {};
+
+      return Folder
+        .findOne()
+        .then(function(folder){
+          badFolder.id = folder.id;
+
+          return chai.request(app)
+            .put(`/api/folders/${folder.id}`)
+            .send(badFolder);
+        })
+        .then(function(res){
+          expect(res).to.have.status(400);
+        });
+    });
+  });
+
+  describe('DELETE endpoint', function(){
+
+    it('should delete item if id is found', function(){
+      let folder;
+
+      return Folder
+        .findOne()
+        .then(function(_folder){
+          folder = _folder;
+          return chai.request(app).delete(`/api/folders/${folder.id}`);
+        })
+        .then(function(res){
+          expect(res).to.have.status(204);
+          return Folder.findById(folder.id);
+        })
+        .then(function(res){
+          expect(res).to.be.null;
+        });
+    });
+
+    it('should return 404 if id is not found', function(){
+      return chai.request(app)
+        .delete('/api/folderss/100000000000000000000003')
+        .then(function(res){
+          expect(res).to.have.status(404);
+        });
+    });
+  });
+});  
