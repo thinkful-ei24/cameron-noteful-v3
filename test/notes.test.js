@@ -6,7 +6,8 @@ const app = require('../server');
 const {TEST_MONGODB_URI} = require('../config');
 
 const Note = require('../models/note');
-const {notes} = require('../db/seed/data');
+const Folder = require('../models/folder');
+const {notes, folders} = require('../db/seed/data');
 
 const expect = chai.expect;
 chai.use(chaiHttp);
@@ -18,7 +19,7 @@ describe('Noteful API resource', function(){
   });
 
   beforeEach(function () {
-    return Note.insertMany(notes);
+    return Promise.all([Note.insertMany(notes), Folder.insertMany(folders)]);
   });
 
   afterEach(function () {
@@ -55,15 +56,18 @@ describe('Noteful API resource', function(){
           expect(resNote.id).to.equal(note.id);
           expect(resNote.title).to.equal(note.title);
           expect(resNote.content).to.equal(note.content);
+          if(note.folderId){
+            expect(mongoose.Types.ObjectId(resNote.folderId)).to.deep.equal(note.folderId);
+          }
         });
     });
     
-    it('should return correct search results for searchTerm in query', function(){
+    it('should return correct search results for searchTerm and folderId in query', function(){
       const searchTerm = 'government';
       const re = new RegExp(searchTerm, 'i');
-
+      let folderId = '111111111111111111111100';
       const dbPromise = Note.find({
-        $or: [{'title': re}, {'content': re}]
+        $and: [{$or: [{'title': re}, {'content': re}]}, {'folderId': folderId}]
       });
 
       const apiPromise = chai.request(app)
@@ -135,6 +139,9 @@ describe('Noteful API resource', function(){
           expect(res.body.id).to.equal(testNote.id);
           expect(res.body.title).to.equal(testNote.title);
           expect(res.body.content).to.equal(testNote.content);
+          if(testNote.folderId){
+            expect(mongoose.Types.ObjectId(res.body.folderId)).to.deep.equal(testNote.folderId);
+          }
         });
     });
 
@@ -160,7 +167,8 @@ describe('Noteful API resource', function(){
     it('should add a new note', function(){
       const newNote = {
         title: 'New Note',
-        content: 'new note content'
+        content: 'new note content',
+        folderId: '111111111111111111111100'
       };
       let res;
       return chai.request(app)
@@ -172,7 +180,7 @@ describe('Noteful API resource', function(){
           expect(res).to.be.json;
           expect(res.body).to.be.a('object');
           expect(res.body).to.include.keys(
-            'id', 'title', 'content');
+            'id', 'title', 'content', 'folderId');
           expect(res.body.title).to.equal(newNote.title);
           // cause Mongo should have created id on insertion
           expect(res.body.id).to.not.be.null;
@@ -184,6 +192,7 @@ describe('Noteful API resource', function(){
           expect(note.id).to.equal(res.body.id);
           expect(note.title).to.equal(newNote.title);
           expect(note.content).to.equal(newNote.content);
+          expect(mongoose.Types.ObjectId(newNote.folderId)).to.deep.equal(note.folderId);
           expect(new Date(res.body.createdAt)).to.eql(note.createdAt);
           expect(new Date(res.body.updatedAt)).to.eql(note.updatedAt);
         });
@@ -208,7 +217,8 @@ describe('Noteful API resource', function(){
     it('should update note in database', function(){
       const updatedNote = {
         title: 'Updated Note',
-        content: 'this note has been updated'
+        content: 'this note has been updated',
+        folderId: '111111111111111111111100'
       };
 
       return Note
@@ -228,12 +238,34 @@ describe('Noteful API resource', function(){
         .then(function(res){
           expect(res.title).to.equal(updatedNote.title);
           expect(res.content).to.equal(updatedNote.content);
+          expect(res.folderId).to.deep.equal(mongoose.Types.ObjectId(updatedNote.folderId));
         });
     });
 
     it('should send 400 error if title is missing', function(){
       const badNote = {
         content: 'content with no title!'
+      };
+
+      return Note
+        .findOne()
+        .then(function(note){
+          badNote.id = note.id;
+
+          return chai.request(app)
+            .put(`/api/notes/${note.id}`)
+            .send(badNote);
+        })
+        .then(function(res){
+          expect(res).to.have.status(400);
+        });
+    });
+
+    it('should send 400 error if folderId is invalid', function(){
+      const badNote = {
+        title: 'Title',
+        content: 'content with bad folderId',
+        folderId: 'NOT-A-VALID-ID'
       };
 
       return Note

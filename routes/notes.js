@@ -73,7 +73,8 @@ router.post('/', (req, res, next) => {
   Note
     .create({
       title: req.body.title,
-      content: req.body.content
+      content: req.body.content,
+      folderId: req.body.folderId
     })
     .then(note => {
       res.location(`${req.originalUrl}/${note.id}`)
@@ -109,7 +110,7 @@ router.put('/:id', (req, res, next) => {
       return res.status(400).send(message);
     }
   }
-  
+
   const toUpdate = {};
   const updateableFields = ['title', 'content', 'folderId'];
 
