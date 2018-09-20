@@ -6,7 +6,7 @@ const app = require('../server');
 const {TEST_MONGODB_URI} = require('../config');
 
 const Note = require('../models/note');
-const {notes} = require('../db/seed/notes');
+const {notes} = require('../db/seed/data');
 
 const expect = chai.expect;
 chai.use(chaiHttp);
