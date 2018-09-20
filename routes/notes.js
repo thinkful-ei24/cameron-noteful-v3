@@ -8,12 +8,17 @@ const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
-  const searchTerm = req.query.searchTerm;
+  const {searchTerm, folderId} = req.query;
   let filter = {};
   const re = new RegExp (searchTerm, 'gi');
-
-  if (searchTerm) {
+  if (folderId && searchTerm){
+    filter.$and = [{$or: [{'title': re}, {'content': re}]}, {'folderId': folderId}];
+  }
+  else if (searchTerm) {
     filter.$or = [{'title': re}, {'content': re}];
+  }
+  else if (folderId){
+    filter = {'folderId': folderId};
   }
   Note
     .find(filter)
@@ -57,6 +62,14 @@ router.post('/', (req, res, next) => {
       return res.status(400).send(message);
     }
   }
+  const {folderId} = req.body;
+  if(folderId){
+    if(!mongoose.Types.ObjectId.isValid(folderId)){
+      const message = 'Invalid folderId';
+      console.error(message);
+      return res.status(400).send(message);
+    }
+  }
   Note
     .create({
       title: req.body.title,
@@ -87,8 +100,18 @@ router.put('/:id', (req, res, next) => {
       return res.status(400).send(message);
     }
   }
+
+  const {folderId} = req.body;
+  if(folderId){
+    if(!mongoose.Types.ObjectId.isValid(folderId)){
+      const message = 'Invalid folderId';
+      console.error(message);
+      return res.status(400).send(message);
+    }
+  }
+  
   const toUpdate = {};
-  const updateableFields = ['title', 'content'];
+  const updateableFields = ['title', 'content', 'folderId'];
 
   updateableFields.forEach(field => {
     if (field in req.body) {
