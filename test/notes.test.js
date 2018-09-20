@@ -56,8 +56,70 @@ describe('Noteful API resource', function(){
           expect(resNote.title).to.equal(note.title);
           expect(resNote.content).to.equal(note.content);
         });
-    }); 
+    });
+    
+    it('should return correct search results for searchTerm in query', function(){
+      const searchTerm = 'government';
+      const re = new RegExp(searchTerm, 'i');
 
+      const dbPromise = Note.find({
+        $or: [{'title': re}, {'content': re}]
+      });
+
+      const apiPromise = chai.request(app)
+        .get(`/api/notes?searchTerm=${searchTerm}`);
+
+      return Promise.all([dbPromise, apiPromise])
+        .then(([data, res]) => {
+          expect(res).to.have.status(200);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('array');
+          expect(res.body).to.have.length(1);
+          res.body.forEach(function (item, i) {
+            expect(item).to.be.a('object');
+            expect(item).to.include.all.keys('id', 'title', 'createdAt', 'updatedAt');
+            expect(item.id).to.equal(data[i].id);
+            expect(item.title).to.equal(data[i].title);
+            expect(item.content).to.equal(data[i].content);
+            expect(new Date(item.createdAt)).to.eql(data[i].createdAt);
+            expect(new Date(item.updatedAt)).to.eql(data[i].updatedAt);
+          });
+        });  
+    });
+
+    it('should return an empty array for an incorrect query', function () {
+      const searchTerm = 'NotValid';
+      // const re = new RegExp(searchTerm, 'i');
+      const dbPromise = Note.find({
+        title: { $regex: searchTerm, $options: 'i' }
+        // $or: [{ 'title': re }, { 'content': re }]
+      });
+      const apiPromise = chai.request(app).get(`/api/notes?searchTerm=${searchTerm}`);
+      return Promise.all([dbPromise, apiPromise])
+        .then(([data, res]) => {
+          expect(res).to.have.status(200);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('array');
+          expect(res.body).to.have.length(data.length);
+        });
+    });
+
+    it('should return an empty array for an incorrect query', function () {
+      const searchTerm = 'NotValid';
+      const re = new RegExp(searchTerm, 'i');
+      const dbPromise = Note.find({
+        $or: [{ 'title': re }, { 'content': re }]
+      });
+      const apiPromise = chai.request(app).get(`/api/notes?searchTerm=${searchTerm}`);
+      return Promise.all([dbPromise, apiPromise])
+        .then(([data, res]) => {
+          expect(res).to.have.status(200);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('array');
+          expect(res.body).to.have.length(data.length);
+        });
+    });
+    
     it('should return 404 error for bad path', function(){
       return chai.request(app)
         .get('/api/bad/path')

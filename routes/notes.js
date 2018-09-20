@@ -8,12 +8,12 @@ const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
-  const searchTerm = req.body.searchTerm;
+  const searchTerm = req.query.searchTerm;
   let filter = {};
   const re = new RegExp (searchTerm, 'gi');
 
   if (searchTerm) {
-    filter.$or = [{title: re}, {content: re}];
+    filter.$or = [{'title': re}, {'content': re}];
   }
   Note
     .find(filter)
