@@ -8,20 +8,23 @@ const router = express.Router();
 
 /* ========== GET/READ ALL ITEMS ========== */
 router.get('/', (req, res, next) => {
-  const {searchTerm, folderId} = req.query;
+  const {searchTerm, folderId, tagId} = req.query;
   let filter = {};
+  filter.$and = [{}, {}];
   const re = new RegExp (searchTerm, 'gi');
-  if (folderId && searchTerm){
-    filter.$and = [{$or: [{'title': re}, {'content': re}]}, {'folderId': folderId}];
+  if (folderId){
+    filter.$and.push({'folderId': folderId});
+
   }
-  else if (searchTerm) {
-    filter.$or = [{'title': re}, {'content': re}];
+  if (searchTerm) {
+    filter.$and.push({$or: [{'title': re}, {'content': re}]});
   }
-  else if (folderId){
-    filter = {'folderId': folderId};
+  if (tagId){
+    filter.$and.push({'tags': tagId});
   }
   Note
     .find(filter)
+    .populate('tags', 'name')
     .sort({ updatedAt: 'desc' })
     .then(notes => res.json(notes))
     .catch(err => {
@@ -39,6 +42,7 @@ router.get('/:id', (req, res, next) => {
   } 
   Note
     .findById(id)
+    .populate('tags', 'name')
     .then(result => {
       if(result){
         res.json(result);
@@ -63,7 +67,7 @@ router.post('/', (req, res, next) => {
     }
   }
   const newNote = {title: req.body.title, content: req.body.content};
-  const {folderId} = req.body;
+  const {folderId, content, tagId} = req.body;
   if(folderId){
     if(!mongoose.Types.ObjectId.isValid(folderId)){
       const message = 'Invalid folderId';
@@ -72,6 +76,19 @@ router.post('/', (req, res, next) => {
     } else {
       newNote.folderId = folderId;
     }
+  }
+  if(tagId){
+    if(!mongoose.Types.ObjectId.isValid(tagId)){
+      const message = 'Invalid tagId';
+      console.error(message);
+      return res.status(400).send(message);
+    } else {
+      newNote.tags = [];
+      newNote.tags.push(tagId);
+    }
+  }
+  if(content){
+    newNote.content = content;
   }
   Note
     .create(newNote)

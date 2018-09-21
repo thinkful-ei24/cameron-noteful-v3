@@ -3,6 +3,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Folder = require('../models/folder');
+const Note = require('../models/note');
 
 const router = express.Router();
 
@@ -126,8 +127,9 @@ router.delete('/:id', (req, res, next) => {
   return Folder.findById(id)
     .then(function(response){
       if(response){
-        Folder
-          .findOneAndRemove({_id: id})
+        const folderPromise = Folder.findOneAndRemove({_id: id});
+        const notePromise = Note.update({folderId: id}, {$unset: {folderId: ''}}, {multi: true});
+        return Promise.all([folderPromise, notePromise])
           .then(() => res.sendStatus(204))
           .catch(err => next(err));
       } else {
