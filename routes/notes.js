@@ -66,29 +66,30 @@ router.post('/', (req, res, next) => {
       return res.status(400).send(message);
     }
   }
-  const newNote = {title: req.body.title, content: req.body.content};
-  const {folderId, content, tagId} = req.body;
+  const {title, folderId, content, tags} = req.body;
   if(folderId){
     if(!mongoose.Types.ObjectId.isValid(folderId)){
       const message = 'Invalid folderId';
       console.error(message);
       return res.status(400).send(message);
-    } else {
-      newNote.folderId = folderId;
+    } 
+  }
+  for(let tagId of tags){
+    if(tagId){
+      if(!mongoose.Types.ObjectId.isValid(tagId)){
+        const message = 'Invalid tagId';
+        console.error(message);
+        return res.status(400).send(message);
+      }
     }
   }
-  if(tagId){
-    if(!mongoose.Types.ObjectId.isValid(tagId)){
-      const message = 'Invalid tagId';
-      console.error(message);
-      return res.status(400).send(message);
-    } else {
-      newNote.tags = [];
-      newNote.tags.push(tagId);
+  const testNote = {title, content, folderId, tags};
+  const newNote = {};
+  // this allows us to add notes without folders, tags, etc
+  for(let field in testNote){
+    if(testNote[field]){
+      newNote[field] = testNote[field];
     }
-  }
-  if(content){
-    newNote.content = content;
   }
   Note
     .create(newNote)
@@ -118,7 +119,7 @@ router.put('/:id', (req, res, next) => {
     }
   }
 
-  const {folderId} = req.body;
+  const {title, folderId, tags, content} = req.body;
   if(folderId){
     if(!mongoose.Types.ObjectId.isValid(folderId)){
       const message = 'Invalid folderId';
@@ -127,14 +128,24 @@ router.put('/:id', (req, res, next) => {
     }
   }
 
-  const toUpdate = {};
-  const updateableFields = ['title', 'content', 'folderId'];
-
-  updateableFields.forEach(field => {
-    if (field in req.body) {
-      toUpdate[field] = req.body[field];
+  for(let tagId of tags){  
+    if(tagId){
+      if(!mongoose.Types.ObjectId.isValid(tagId)){
+        const message = 'Invalid tagId';
+        console.error(message);
+        return res.status(400).send(message);
+      }
     }
-  });
+  }
+  const testNote = {title, content, folderId, tags};
+  const toUpdate = {};
+
+  for(let field in testNote){
+    if(testNote[field]){
+      toUpdate[field] = testNote[field];
+    }
+  }
+
   Note
     .findOneAndUpdate(
       {_id: req.params.id},
