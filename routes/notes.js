@@ -62,20 +62,19 @@ router.post('/', (req, res, next) => {
       return res.status(400).send(message);
     }
   }
+  const newNote = {title: req.body.title, content: req.body.content};
   const {folderId} = req.body;
   if(folderId){
     if(!mongoose.Types.ObjectId.isValid(folderId)){
       const message = 'Invalid folderId';
       console.error(message);
       return res.status(400).send(message);
+    } else {
+      newNote.folderId = folderId;
     }
   }
   Note
-    .create({
-      title: req.body.title,
-      content: req.body.content,
-      folderId: req.body.folderId
-    })
+    .create(newNote)
     .then(note => {
       res.location(`${req.originalUrl}/${note.id}`)
         .status(201)
