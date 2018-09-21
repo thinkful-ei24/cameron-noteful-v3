@@ -107,7 +107,7 @@ router.put('/:id', (req, res, next) => {
     .then(result => res.sendStatus(204))
     .catch(err => {
       if (err.code === 11000) {
-        err = new Error('The tag already exists');
+        err.message = 'The tag already exists';
         err.status = 400;
       }
       next(err);

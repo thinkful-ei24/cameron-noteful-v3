@@ -74,15 +74,18 @@ router.post('/', (req, res, next) => {
       return res.status(400).send(message);
     } 
   }
-  for(let tagId of tags){
-    if(tagId){
-      if(!mongoose.Types.ObjectId.isValid(tagId)){
-        const message = 'Invalid tagId';
-        console.error(message);
-        return res.status(400).send(message);
+  if(tags){
+    for(let tagId of tags){
+      if(tagId){
+        if(!mongoose.Types.ObjectId.isValid(tagId)){
+          const message = 'Invalid tagId';
+          console.error(message);
+          return res.status(400).send(message);
+        }
       }
     }
   }
+
   const testNote = {title, content, folderId, tags};
   const newNote = {};
   // this allows us to add notes without folders, tags, etc
@@ -128,15 +131,18 @@ router.put('/:id', (req, res, next) => {
     }
   }
 
-  for(let tagId of tags){  
-    if(tagId){
-      if(!mongoose.Types.ObjectId.isValid(tagId)){
-        const message = 'Invalid tagId';
-        console.error(message);
-        return res.status(400).send(message);
+  if(tags){
+    for(let tagId of tags){  
+      if(tagId){
+        if(!mongoose.Types.ObjectId.isValid(tagId)){
+          const message = 'Invalid tagId';
+          console.error(message);
+          return res.status(400).send(message);
+        }
       }
     }
   }
+
   const testNote = {title, content, folderId, tags};
   const toUpdate = {};
 
