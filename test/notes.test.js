@@ -7,7 +7,8 @@ const {TEST_MONGODB_URI} = require('../config');
 
 const Note = require('../models/note');
 const Folder = require('../models/folder');
-const {notes, folders} = require('../db/seed/data');
+const Tag = require('../models/tags');
+const {notes, folders, tags} = require('../db/seed/data');
 
 const expect = chai.expect;
 chai.use(chaiHttp);
@@ -19,7 +20,12 @@ describe('Noteful API resource', function(){
   });
 
   beforeEach(function () {
-    return Promise.all([Note.insertMany(notes), Folder.insertMany(folders)]);
+    return Promise.all([
+      Note.insertMany(notes),
+      Folder.insertMany(folders),
+      Folder.createIndexes(),
+      Tag.insertMany(tags),
+      Tag.createIndexes()]);
   });
 
   afterEach(function () {
@@ -62,12 +68,11 @@ describe('Noteful API resource', function(){
         });
     });
     
-    it('should return correct search results for searchTerm and folderId in query', function(){
+    it('should return correct search results for searchTerm query', function(){
       const searchTerm = 'government';
       const re = new RegExp(searchTerm, 'i');
-      let folderId = '111111111111111111111100';
       const dbPromise = Note.find({
-        $and: [{$or: [{'title': re}, {'content': re}]}, {'folderId': folderId}]
+        $or: [{'title': re}, {'content': re}]
       });
 
       const apiPromise = chai.request(app)
@@ -89,6 +94,42 @@ describe('Noteful API resource', function(){
             expect(new Date(item.updatedAt)).to.eql(data[i].updatedAt);
           });
         });  
+    });
+
+    it('should return correct search results for folderId query', function(){
+      let data;
+      return Folder.findOne()
+        .then(result => {
+          data = result;
+          return Promise.all([
+            Note.find({folderId: data.id}),
+            chai.request(app).get(`/api/notes?folderId=${data.id}`)
+          ])
+            .then(([data, res]) => {
+              expect(res).to.have.status(200);
+              expect(res).to.be.json;
+              expect(res.body).to.be.a('array');
+              expect(res.body).to.have.length(data.length);
+            });
+        });
+    });
+
+    it('should return correct search results for tagId query', function(){
+      let data;
+      return Tag.findOne()
+        .then(result => {
+          data = result;
+          return Promise.all([
+            Note.find({tags: data.id}),
+            chai.request(app).get(`/api/notes?tagId=${data.id}`)
+          ])
+            .then(([data, res]) => {
+              expect(res).to.have.status(200);
+              expect(res).to.be.json;
+              expect(res.body).to.be.a('array');
+              expect(res.body).to.have.length(data.length);
+            });
+        });
     });
 
 

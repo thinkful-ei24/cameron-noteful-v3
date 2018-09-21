@@ -61,7 +61,7 @@ router.post('/', (req, res, next) => {
     })
     .catch(err => {
       if (err.code === 11000) {
-        err = new Error('The folder name already exists');
+        err = new Error('Folder name already exists');
         err.status = 400;
       }
       next(err);
@@ -108,7 +108,7 @@ router.put('/:id', (req, res, next) => {
     .then(result => res.sendStatus(204))
     .catch(err => {
       if (err.code === 11000) {
-        err = new Error('The folder name already exists');
+        err.message = 'Folder name already exists';
         err.status = 400;
       }
       next(err);

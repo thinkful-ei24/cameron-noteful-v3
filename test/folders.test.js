@@ -18,7 +18,7 @@ describe('Noteful API resource', function(){
   });
 
   beforeEach(function () {
-    return Folder.insertMany(folders);
+    return Promise.all([Folder.insertMany(folders), Folder.createIndexes()]);
   });
 
   afterEach(function () {
@@ -141,7 +141,7 @@ describe('Noteful API resource', function(){
         });
     });
 
-    it.skip('should return an error when given a duplicate name', function () {
+    it('should return an error when given a duplicate name', function () {
       return Folder.findOne()
         .then(data => {
           const newItem = { 'name': data.name };
@@ -198,7 +198,7 @@ describe('Noteful API resource', function(){
           expect(res).to.have.status(400);
         });
     });
-    it.skip('should return an error when given a duplicate name', function () {
+    it('should return an error when given a duplicate name', function () {
       return Folder.find().limit(2)
         .then(results => {
           const [item1, item2] = results;

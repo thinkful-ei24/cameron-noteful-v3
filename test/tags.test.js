@@ -18,7 +18,7 @@ describe('Noteful API resource', function(){
   });
 
   beforeEach(function () {
-    return Tag.insertMany(tags);
+    return Promise.all([Tag.insertMany(tags), Tag.createIndexes()]);
   });
 
   afterEach(function () {
@@ -141,7 +141,7 @@ describe('Noteful API resource', function(){
         });
     });
 
-    it.skip('should return error when given duplicate name', function(){
+    it('should return error when given duplicate name', function(){
       return Tag.findOne()
         .then(data => {
           const duplicateTag = {'name': data.name};
@@ -149,7 +149,7 @@ describe('Noteful API resource', function(){
         })
         .then(function(res){
           expect(res).to.have.status(400);
-          expect(res.body.message).to.equal('The tag already exists');
+          expect(res.body.message).to.equal('Tag name already exists');
         });
     });
   });
@@ -197,7 +197,7 @@ describe('Noteful API resource', function(){
         });
     });
 
-    it.skip('should return an error when given a duplicate name', function () {
+    it('should return an error when given a duplicate name', function () {
       return Tag.find().limit(2)
         .then(function(results){
           const [item1, item2] = results;
@@ -210,7 +210,7 @@ describe('Noteful API resource', function(){
           expect(res).to.have.status(400);
           expect(res).to.be.json;
           expect(res.body).to.be.a('object');
-          expect(res.body.message).to.equal('The tag already exists');
+          expect(res.body.message).to.equal('Tag name already exists');
         });
     });
   });
