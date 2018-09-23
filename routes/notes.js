@@ -106,11 +106,11 @@ router.post('/', (req, res, next) => {
 
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/:id', (req, res, next) => {
-  if(!(req.params.id && req.body.id && req.params.id === req.body.id)){
-    const message = (`Request patch id (${req.params.id}) and request body id` +
-    `(${req.body.id}) must match`);
+  const {id} = req.params;
+  if(!mongoose.Types.ObjectId.isValid(id)){
+    const message = 'Invalid id';
     console.error(message);
-    return res.status(400).json({message});
+    return res.status(400).send(message);
   }
   const requiredFields = ['title'];
   for (let i=0; i<requiredFields.length; i++){
@@ -154,11 +154,17 @@ router.put('/:id', (req, res, next) => {
 
   Note
     .findOneAndUpdate(
-      {_id: req.params.id},
+      {_id: id},
       {$set: toUpdate},
       {new: true}
     )
-    .then(result => res.sendStatus(204))
+    .then(result => {
+      if(result){
+        res.sendStatus(204); 
+      } else {
+        next();
+      }
+    })
     .catch(err => next(err));
 
 });

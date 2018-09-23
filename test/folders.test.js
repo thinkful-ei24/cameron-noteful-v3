@@ -1,6 +1,8 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const mongoose = require('mongoose');
+const express = require('express');
+const sinon = require('sinon');
 
 const app = require('../server');
 const {TEST_MONGODB_URI} = require('../config');
@@ -9,6 +11,7 @@ const Folder = require('../models/folder');
 const {folders} = require('../db/seed/data');
 
 const expect = chai.expect;
+const sandbox = sinon.createSandbox();
 chai.use(chaiHttp);
 
 describe('Noteful API resource', function(){
@@ -22,6 +25,7 @@ describe('Noteful API resource', function(){
   });
 
   afterEach(function () {
+    sandbox.restore();
     return mongoose.connection.db.dropDatabase();
   });
 
@@ -54,6 +58,17 @@ describe('Noteful API resource', function(){
         .then(function(folder){
           expect(resFolder.id).to.equal(folder.id);
           expect(resFolder.name).to.equal(folder.name);
+        });
+    });
+
+    it('should catch errors and respond properly', function () {
+      sandbox.stub(Folder.schema.options.toObject, 'transform').throws('FakeError');
+      return chai.request(app).get('/api/folders')
+        .then(res => {
+          expect(res).to.have.status(500);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('object');
+          expect(res.body.message).to.equal('Internal Server Error');
         });
     });
   });  
@@ -95,6 +110,23 @@ describe('Noteful API resource', function(){
         .get('/api/folders/DOESNOTEXIST')
         .then(function(res){
           expect(res).to.have.status(404);
+        });
+    });
+
+    it('should catch errors and respond properly', function () {
+      sandbox.stub(Folder.schema.options.toObject, 'transform').throws('FakeError');
+
+      let data;
+      return Folder.findOne()
+        .then(_data => {
+          data = _data;
+          return chai.request(app).get(`/api/folders/${data.id}`);
+        })
+        .then(res => {
+          expect(res).to.have.status(500);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('object');
+          expect(res.body.message).to.equal('Internal Server Error');
         });
     });
   });
@@ -152,6 +184,21 @@ describe('Noteful API resource', function(){
           expect(res).to.be.json;
           expect(res.body).to.be.a('object');
           expect(res.body.message).to.equal('Folder name already exists');
+        });
+    });
+
+    it('should catch errors and respond properly', function () {
+      sandbox.stub(Folder.schema.options.toObject, 'transform').throws('FakeError');
+
+      const newItem = { name: 'newFolder' };
+      return chai.request(app)
+        .post('/api/folders')
+        .send(newItem)
+        .then(res => {
+          expect(res).to.have.status(500);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('object');
+          expect(res.body.message).to.equal('Internal Server Error');
         });
     });
   });
@@ -214,6 +261,24 @@ describe('Noteful API resource', function(){
           expect(res.body.message).to.equal('Folder name already exists');
         });
     });
+
+    // it('should catch errors and respond properly', function () {
+    //   sandbox.stub(Folder.schema.options.toObject, 'transform').throws('FakeError');
+
+    //   const updateItem = { name: 'Updated Name' };
+    //   let data;
+    //   return Folder.findOne()
+    //     .then(_data => {
+    //       data = _data;
+    //       return chai.request(app).put(`/api/folders/${data.id}`).send(updateItem);
+    //     })
+    //     .then(res => {
+    //       expect(res).to.have.status(500);
+    //       expect(res).to.be.json;
+    //       expect(res.body).to.be.a('object');
+    //       expect(res.body.message).to.equal('Internal Server Error');
+    //     });
+    // });
   });
 
   describe('DELETE endpoint', function(){
@@ -241,6 +306,20 @@ describe('Noteful API resource', function(){
         .delete('/api/folders/DOESNOTEXIST')
         .then(function(res){
           expect(res).to.have.status(404);
+        });
+    });
+
+    it('should catch errors and respond properly', function () {
+      sandbox.stub(express.response, 'sendStatus').throws('FakeError');
+      return Folder.findOne()
+        .then(data => {
+          return chai.request(app).delete(`/api/folders/${data.id}`);
+        })
+        .then(res => {
+          expect(res).to.have.status(500);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('object');
+          expect(res.body.message).to.equal('Internal Server Error');
         });
     });
   });

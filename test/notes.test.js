@@ -1,6 +1,8 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const mongoose = require('mongoose');
+const express = require('express');
+const sinon = require('sinon');
 
 const app = require('../server');
 const {TEST_MONGODB_URI} = require('../config');
@@ -11,25 +13,34 @@ const Tag = require('../models/tags');
 const {notes, folders, tags} = require('../db/seed/data');
 
 const expect = chai.expect;
+const sandbox = sinon.createSandbox();
 chai.use(chaiHttp);
 
 describe('Noteful API resource', function(){
   before(function () {
     return mongoose.connect(TEST_MONGODB_URI, { useNewUrlParser:true })
-      .then(() => mongoose.connection.db.dropDatabase());
+      .then(() => Promise.all([
+        Note.deleteMany(),
+        Folder.deleteMany(),
+        Tag.deleteMany(),
+      ]));
   });
 
   beforeEach(function () {
     return Promise.all([
       Note.insertMany(notes),
       Folder.insertMany(folders),
-      Folder.createIndexes(),
-      Tag.insertMany(tags),
-      Tag.createIndexes()]);
+      Tag.insertMany(tags)
+    ]);
   });
 
   afterEach(function () {
-    return mongoose.connection.db.dropDatabase();
+    sandbox.restore();
+    return Promise.all([
+      Note.deleteMany(),
+      Folder.deleteMany(),
+      Tag.deleteMany(),
+    ]);
   });
 
   after(function () {
@@ -156,6 +167,18 @@ describe('Noteful API resource', function(){
           expect(results).to.have.status(404);
         });
     });
+
+    it('should catch errors and respond properly', function () {
+      sandbox.stub(Note.schema.options.toObject, 'transform').throws('FakeError');
+
+      return chai.request(app).get('/api/notes')
+        .then(res => {
+          expect(res).to.have.status(500);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('object');
+          expect(res.body.message).to.equal('Internal Server Error');
+        });
+    });
   });
 
   describe('GET api/notes/:id', function(){
@@ -199,6 +222,20 @@ describe('Noteful API resource', function(){
         .get('/api/notes/DOESNOTEXIST')
         .then(function(res){
           expect(res).to.have.status(404);
+        });
+    });
+
+    it('should catch errors and respond properly', function () {
+      sandbox.stub(Note.schema.options.toObject, 'transform').throws('FakeError');
+      return Note.findOne()
+        .then(data => {
+          return chai.request(app).get(`/api/notes/${data.id}`);
+        })
+        .then(res => {
+          expect(res).to.have.status(500);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('object');
+          expect(res.body.message).to.equal('Internal Server Error');
         });
     });
   });
@@ -249,6 +286,25 @@ describe('Noteful API resource', function(){
         .send(badNote)
         .then(function(res){
           expect(res).to.have.status(400);
+        });
+    });
+
+    it('should catch errors and respond properly', function () {
+      sandbox.stub(Note.schema.options.toObject, 'transform').throws('FakeError');
+
+      const newItem = {
+        title: 'The best article about cats ever!',
+        content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor...'
+      };
+
+      return chai.request(app)
+        .post('/api/notes')
+        .send(newItem)
+        .then(res => {
+          expect(res).to.have.status(500);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('object');
+          expect(res.body.message).to.equal('Internal Server Error');
         });
     });
   });
@@ -327,6 +383,27 @@ describe('Noteful API resource', function(){
           expect(res).to.have.status(400);
         });
     });
+
+    // it('should catch errors and respond properly', function () {
+    //   sandbox.stub(Note.schema.options.toObject, 'transform').throws('FakeError');
+
+    //   const updateItem = {
+    //     title: 'What about dogs?!',
+    //     content: 'Lorem ipsum dolor sit amet, sed do eiusmod tempor...'
+    //   };
+    //   return Note.findOne()
+    //     .then(data => {
+    //       return chai.request(app)
+    //         .put(`/api/notes/${data.id}`)
+    //         .send(updateItem);
+    //     })
+    //     .then(res => {
+    //       expect(res).to.have.status(500);
+    //       expect(res).to.be.json;
+    //       expect(res.body).to.be.a('object');
+    //       expect(res.body.message).to.equal('Internal Server Error');
+    //     });
+    // });    
   });
 
   describe('DELETE endpoint', function(){
@@ -354,6 +431,20 @@ describe('Noteful API resource', function(){
         .delete('/api/notes/100000000000000000000003')
         .then(function(res){
           expect(res).to.have.status(404);
+        });
+    });
+
+    it('should catch errors and respond properly', function () {
+      sandbox.stub(express.response, 'sendStatus').throws('FakeError');
+      return Note.findOne()
+        .then(data => {
+          return chai.request(app).delete(`/api/notes/${data.id}`);
+        })
+        .then(res => {
+          expect(res).to.have.status(500);
+          expect(res).to.be.json;
+          expect(res.body).to.be.a('object');
+          expect(res.body.message).to.equal('Internal Server Error');
         });
     });
   });

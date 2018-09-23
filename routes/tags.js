@@ -75,12 +75,7 @@ router.put('/:id', (req, res, next) => {
     console.error(message);
     return res.status(400).send(message);
   }
-  if(!(req.params.id && req.body.id && req.params.id === req.body.id)){
-    const message = (`Request patch id (${req.params.id}) and request body id` +
-    `(${req.body.id}) must match`);
-    console.error(message);
-    return res.status(400).json({message});
-  }
+
   const requiredFields = ['name'];
   for (let i=0; i<requiredFields.length; i++){
     const field = requiredFields[i];
@@ -104,7 +99,13 @@ router.put('/:id', (req, res, next) => {
       {$set: toUpdate},
       {new: true}
     )
-    .then(result => res.sendStatus(204))
+    .then(result => {
+      if(result){
+        res.sendStatus(204);
+      }else {
+        next();
+      }
+    })
     .catch(err => {
       if (err.code === 11000) {
         err.message = 'Tag name already exists';
