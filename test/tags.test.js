@@ -92,7 +92,7 @@ describe('Noteful API resource', function(){
 
     it('should return 404 if id is not found', function(){
       return chai.request(app)
-        .get('/api/folders/100000000000000000000003')
+        .get('/api/folders/DOESNOTEXIST')
         .then(function(res){
           expect(res).to.have.status(404);
         });
@@ -237,7 +237,7 @@ describe('Noteful API resource', function(){
 
     it('should return 404 if id is not found', function(){
       return chai.request(app)
-        .delete('/api/tags/100000000000000000000003')
+        .delete('/api/tags/DOESNOTEXIST')
         .then(function(res){
           expect(res).to.have.status(404);
         });

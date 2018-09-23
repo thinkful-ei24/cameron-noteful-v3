@@ -86,7 +86,7 @@ describe('Noteful API resource', function(){
           expect(res.body).to.have.length(1);
           res.body.forEach(function (item, i) {
             expect(item).to.be.a('object');
-            expect(item).to.include.all.keys('id', 'title', 'createdAt', 'updatedAt');
+            expect(item).to.include.all.keys('id', 'title', 'createdAt', 'updatedAt', 'tags');
             expect(item.id).to.equal(data[i].id);
             expect(item.title).to.equal(data[i].title);
             expect(item.content).to.equal(data[i].content);
@@ -175,7 +175,7 @@ describe('Noteful API resource', function(){
           expect(res).to.be.json;
           expect(res.body).to.be.a('object');
           expect(res.body).to.include.keys(
-            'id', 'title', 'content'
+            'id', 'title', 'content', 'tags', 'createdAt', 'updatedAt'
           );
           expect(res.body.id).to.equal(testNote.id);
           expect(res.body.title).to.equal(testNote.title);
@@ -196,7 +196,7 @@ describe('Noteful API resource', function(){
 
     it('should return 404 if id is not found', function(){
       return chai.request(app)
-        .get('/api/notes/100000000000000000000003')
+        .get('/api/notes/DOESNOTEXIST')
         .then(function(res){
           expect(res).to.have.status(404);
         });
@@ -221,7 +221,7 @@ describe('Noteful API resource', function(){
           expect(res).to.be.json;
           expect(res.body).to.be.a('object');
           expect(res.body).to.include.keys(
-            'id', 'title', 'content', 'folderId');
+            'id', 'title', 'content', 'folderId', 'tags', 'createdAt', 'updatedAt');
           expect(res.body.title).to.equal(newNote.title);
           // cause Mongo should have created id on insertion
           expect(res.body.id).to.not.be.null;
@@ -259,12 +259,13 @@ describe('Noteful API resource', function(){
       const updatedNote = {
         title: 'Updated Note',
         content: 'this note has been updated',
-        folderId: '111111111111111111111100'
+        tags: ['222222222222222222222200', '222222222222222222222201']
       };
-
+      let note;
       return Note
         .findOne()
-        .then(function(note){
+        .then(function(_note){
+          note = _note;
           updatedNote.id = note.id;
 
           return chai.request(app)
@@ -276,10 +277,14 @@ describe('Noteful API resource', function(){
 
           return Note.findById(updatedNote.id);
         })
-        .then(function(res){
-          expect(res.title).to.equal(updatedNote.title);
-          expect(res.content).to.equal(updatedNote.content);
-          expect(res.folderId).to.deep.equal(mongoose.Types.ObjectId(updatedNote.folderId));
+        .then(function(result){
+          expect(result.title).to.equal(updatedNote.title);
+          expect(result.content).to.equal(updatedNote.content);
+          for (let i=0; i<updatedNote.tags.length; i++){
+            expect(result.tags).to.include(mongoose.Types.ObjectId(updatedNote.tags[i]));
+          }
+          expect(new Date(result.createdAt)).to.deep.equal(note.createdAt);
+          expect(new Date(result.updatedAt)).to.greaterThan(note.updatedAt);
         });
     });
 
