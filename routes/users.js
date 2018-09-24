@@ -9,7 +9,7 @@ router.post('/', (req, res, next) => {
   const newUser = {};
   const userFields = ['fullname', 'username', 'password'];
 
-  for (let field in userFields){
+  for (let field of userFields){
     if(req.body[field]){
       newUser[field] = req.body[field];
     }
