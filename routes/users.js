@@ -19,7 +19,7 @@ router.post('/', (req, res, next) => {
   }
 
   const notStringField = allFields.find(field => 
-    field in req.body && (typeof field) !== 'string'
+    field in req.body && (typeof req.body[field]) !== 'string'
   );
 
   if(notStringField) {
@@ -28,12 +28,12 @@ router.post('/', (req, res, next) => {
     return next(err);
   }
 
-  const untrimmedField = allFields.find(field => {
-    field in req.body && req.body[field] !== req.body[field].trim();
+  const nonTrimmedField = requiredFields.find(field => {
+    return req.body[field].trim() !== req.body[field];
   });
 
-  if(untrimmedField){
-    const err = new Error(`${untrimmedField} cannot start or end with whitespace`);
+  if(nonTrimmedField){
+    const err = new Error(`${nonTrimmedField} cannot start or end with whitespace`);
     err.status = 422;
     return next(err);
   }
@@ -49,12 +49,12 @@ router.post('/', (req, res, next) => {
   };
 
   const tooShort = Object.keys(requiredLength).find(field => {
-    'min' in requiredLength[field] &&
+    return 'min' in requiredLength[field] &&
     req.body[field].length < requiredLength[field].min;
   });
 
   const tooLong = Object.keys(requiredLength).find(field => {
-    'max' in requiredLength[field] &&
+    return 'max' in requiredLength[field] &&
     req.body[field].length > requiredLength[field].max;
   });
 
